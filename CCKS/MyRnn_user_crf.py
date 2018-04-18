@@ -168,12 +168,12 @@ class MyMode:
             # if(step%10 == 0):
             print('loss', batch_loss)
             losses.append(batch_loss)
-            if (step % 100 == 0):
+            if (step % 1000 == 0):
                 print('asdasdasd')
-                # self.saver.save(sess, os.path.join('./crf_model/'), global_step=step)
-                # file = open('./resource/crf_losses.txt', 'w', encoding='utf-8')
-                # file.write(str(losses))
-                # file.close()
+                self.saver.save(sess, os.path.join('./crf_model/'), global_step=step)
+                file = open('./resource/crf_losses2.txt', 'w', encoding='utf-8')
+                file.write(str(losses))
+                file.close()
                 # if(step == 10):
                 #     return
 
@@ -217,7 +217,7 @@ class MyMode:
 
 if __name__ == '__main__':
     pass
-    g = batch_generator(500)
+    g = batch_generator(250)
     rnn = MyMode(310,128,20,128,0.005,1723,47,128)
     rnn.load(tf.train.latest_checkpoint('./crf_model/'))
 
