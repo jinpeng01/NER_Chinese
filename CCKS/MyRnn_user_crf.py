@@ -171,7 +171,7 @@ class MyMode:
                 losses.append(batch_loss)
                 if (step % 100 == 0):
                     print('asdasdasd')
-                    self.saver.save(sess, os.path.join('./model/'), global_step=step)
+                    self.saver.save(sess, os.path.join('./crf_model/'), global_step=step)
                     file = open('./resource/crf_losses.txt', 'w', encoding='utf-8')
                     file.write(str(losses))
                     file.close()
@@ -208,7 +208,7 @@ class MyMode:
         print('Restored from: {}'.format(checkpoint))
 if __name__ == '__main__':
     pass
-    g = batch_generator(30)
+    g = batch_generator(128)
     rnn = MyMode(310,128,20,128,0.005,1723,47,128)
     # rnn.use_crf = False
     rnn.train(g)
