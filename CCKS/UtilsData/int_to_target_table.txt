@@ -1,0 +1,1 @@
+{0: 'E-dise', 1: 'I-body', 2: 'I-symp', 3: 'E-cure', 4: 'B-symp', 5: 'B-dise', 6: 'I-cure', 7: 'I-dise', 8: 'I-chec', 9: 'E-symp', 10: 'B-cure', 11: 'B-chec', 12: 'E-chec', 13: 'E-body', 14: 'B-body', 15: 'O'}
