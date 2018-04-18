@@ -163,7 +163,7 @@ class MyMode:
 
     def predict(self,predict_generator):
         sess = self.session
-        sess.run(tf.global_variables_initializer())
+        # sess.run(tf.global_variables_initializer())
         for X, M in predict_generator:
             feed = {self.inputs: X,
                     self.others: M}

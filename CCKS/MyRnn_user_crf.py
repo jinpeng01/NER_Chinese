@@ -54,10 +54,9 @@ class MyMode:
             self.sequence_lengths: lengths,
             self.others: M_,
             self.targets: Y_,
-            # self.keep_prob: keep_prob
+            # self.keep_prob: keep_prob,
+            self.isTrain: 1
         }
-
-
         return feed, lengths
 
     def getPredictfeed(self, X, M):
@@ -66,7 +65,8 @@ class MyMode:
         feed = {
             self.inputs: X,
             self.sequence_lengths: lengths,
-            self.others: M
+            self.others: M,
+            self.isTrain:0
         }
         return feed, lengths
 
@@ -74,14 +74,14 @@ class MyMode:
 
             _input_embedding = tf.get_variable('input_embedding',dtype=tf.float32,shape = (self.vocab_size
                                             ,self.input_embedding_size))
-            inputs_embedding = tf.nn.embedding_lookup(_input_embedding,self.inputs)
+            self.inputs_embedding = tf.nn.embedding_lookup(_input_embedding,self.inputs)
 
             _other_embedding = tf.get_variable('other_embedding',dtype=tf.float32,shape=(47
             ,self.other_embedding_size))
 
-            other_embedding = tf.nn.embedding_lookup(_other_embedding,self.others)
+            self.other_embedding = tf.nn.embedding_lookup(_other_embedding,self.others)
 
-            self.lstm_inputs = tf.concat([inputs_embedding,other_embedding],axis=-1)
+            self.lstm_inputs = tf.concat([self.inputs_embedding,self.other_embedding],axis=2)
             if (self.isTrain == 1):
                 self.lstm_inputs = tf.nn.dropout(self.lstm_inputs,self.keep_prob)
 
@@ -141,78 +141,91 @@ class MyMode:
 
 
     def build_optimizer(self):
-        self.train_op = tf.train.AdamOptimizer().minimize(self.loss)
+        self.train_op = tf.train.AdamOptimizer(learning_rate=0.0003).minimize(self.loss)
 
     def train(self,batch_generator):
         # print('self.use_crf',self.use_crf)
         losses = []
-        with tf.Session() as sess:
-            sess.run(tf.global_variables_initializer())
-            step = 0
-            for X,Y,M in batch_generator:
-                # X_, lengths = U.paddingList(X, pad_token=0)
-                # M_, _ = U.paddingList(M, pad_token=0)
-                # Y_, _ = U.paddingList(Y, pad_token=0)
-                # feed = {
-                #     self.inputs: X_,
-                #     self.sequence_lengths: lengths,
-                #     self.others: M_,
-                #     self.targets: Y_
-                #     # self.keep_prob: keep_prob
-                # }
-                step += 1
-                feed,_ = self.getTrainfeed(X,M,Y)
+        sess = self.session
+        # sess.run(tf.global_variables_initializer())
+        step = 0
+        for X, Y, M in batch_generator:
+            X_, lengths = U.paddingList(X, pad_token=0)
+            M_, _ = U.paddingList(M, pad_token=0)
+            Y_, _ = U.paddingList(Y, pad_token=0)
+            feed = {
+                self.inputs: X_,
+                self.sequence_lengths: lengths,
+                self.others: M_,
+                self.targets: Y_
+                # self.keep_prob: keep_prob
+            }
+            step += 1
+            feed, _ = self.getTrainfeed(X, M, Y)
 
-                batch_loss,logits,_ = sess.run([self.loss,self.logits,self.train_op],feed_dict=feed)
+            batch_loss, logits, _ = sess.run([self.loss, self.logits, self.train_op], feed_dict=feed)
 
-
-                # if(step%10 == 0):
-                print('loss',batch_loss)
-                losses.append(batch_loss)
-                if (step % 100 == 0):
-                    print('asdasdasd')
-                    self.saver.save(sess, os.path.join('./crf_model/'), global_step=step)
-                    file = open('./resource/crf_losses.txt', 'w', encoding='utf-8')
-                    file.write(str(losses))
-                    file.close()
+            # if(step%10 == 0):
+            print('loss', batch_loss)
+            losses.append(batch_loss)
+            if (step % 100 == 0):
+                print('asdasdasd')
+                # self.saver.save(sess, os.path.join('./crf_model/'), global_step=step)
+                # file = open('./resource/crf_losses.txt', 'w', encoding='utf-8')
+                # file.write(str(losses))
+                # file.close()
                 # if(step == 10):
                 #     return
 
 
     def predict(self,predict_generator):
-        self.isTrain = False
-        with tf.Session() as sess:
-            sess.run(tf.global_variables_initializer())
-            for X, M in predict_generator:
+        # self.isTrain = False
+        sess = self.session
+        for X, M,Y in predict_generator:
+            feed, lengths = self.getPredictfeed(X, M)
+            if (self.use_crf == True):
+                # inputs_embedding,other_embedding  = sess.run([self.inputs_embedding,self.other_embedding],feed_dict=feed)
+                # print('inputs_embedding',inputs_embedding.shape)
+                # print('other_embedding',other_embedding.shape)
 
-                feed,lengths = self.getPredictfeed(X,M)
-                if (self.use_crf == True):
-                    logits, trans_params = sess.run([self.logits, self.trans_params, ], feed_dict=feed)
+                logits, trans_params = sess.run([self.logits, self.trans_params, ], feed_dict=feed)
+                viterbi_sequences = []
+                for logit, leng in zip(logits, lengths):
+                    logit = logit[:leng]  # keep only the valid steps
+                    viterbi_seq, viterbi_score = tf.contrib.crf.viterbi_decode(
+                        logit, trans_params)
+                    viterbi_sequences += [viterbi_seq]
+                # print(viterbi_sequences)
+                preds = [U.int_to_target(idx) for idx in list(viterbi_sequences[0])]
+                real = [U.int_to_target(idx) for idx in list(Y[0])]
+                print('=---------------------==')
+                print('viterbi',preds)
+                print('Y_lbale',real)
+                print('=---------------------==')
 
-                    viterbi_sequences = []
-                    print('logits', logits.shape)
-                    for logit,leng in zip(logits,lengths):
-                        logit = logit[:leng]  # keep only the valid steps
-                        viterbi_seq, viterbi_score = tf.contrib.crf.viterbi_decode(
-                            logit, trans_params)
-                        viterbi_sequences += [viterbi_seq]
-                    print(viterbi_sequences)
+                # print(preds)
 
-                else:
-                    labels_pre = sess.run([self.labels_pre], feed_dict=feed)
-                    # preds = [U.int_to_target(idx) for idx in list(labels_pre[0][0])]
+
+            else:
+                labels_pre = sess.run([self.labels_pre], feed_dict=feed)
+                preds = [U.int_to_target(idx) for idx in list(labels_pre[0][0])]
 
     def load(self, checkpoint):
         self.session = tf.Session()
         self.saver.restore(self.session, checkpoint)
         print('Restored from: {}'.format(checkpoint))
+
 if __name__ == '__main__':
     pass
-    g = batch_generator(128)
+    g = batch_generator(500)
     rnn = MyMode(310,128,20,128,0.005,1723,47,128)
+    rnn.load(tf.train.latest_checkpoint('./crf_model/'))
+
     # rnn.use_crf = False
     rnn.train(g)
     # pre = predict_generator()
     # rnn.isTrain = 0
+
+    # rnn.load(tf.train.latest_checkpoint('./crf_model/'))
     # rnn.predict(pre)
 
