@@ -21,6 +21,8 @@ class MyMode:
         self.other_embedding_size = other_embedding_size
         self.use_crf = use_crf
         self.batch_size = batch_size
+        self.isTrain = 0
+        self.use_Other = 0
 
         self.buildInput()
         self.n_steps = tf.shape(self.inputs)[-1]
@@ -43,7 +45,7 @@ class MyMode:
         self.targets = tf.placeholder(dtype=tf.int32, shape=
         [None, None], name='targets')
         self.keep_prob = tf.placeholder(dtype=tf.float32, name='keep_prob')
-        self.isTrain = tf.placeholder(dtype=tf.int32, shape=[], name='isTrain')
+
 
     def getTrainfeed(self, X, M, Y, keep_prob=None):
         X_, lengths = U.paddingList(X, pad_token=0)
@@ -54,8 +56,7 @@ class MyMode:
             self.sequence_lengths: lengths,
             self.others: M_,
             self.targets: Y_,
-            # self.keep_prob: keep_prob,
-            self.isTrain: 1
+            self.keep_prob: 0.5,
         }
         return feed, lengths
 
@@ -66,7 +67,6 @@ class MyMode:
             self.inputs: X,
             self.sequence_lengths: lengths,
             self.others: M,
-            self.isTrain:0
         }
         return feed, lengths
 
@@ -76,13 +76,18 @@ class MyMode:
                                             ,self.input_embedding_size))
             self.inputs_embedding = tf.nn.embedding_lookup(_input_embedding,self.inputs)
 
-            _other_embedding = tf.get_variable('other_embedding',dtype=tf.float32,shape=(47
-            ,self.other_embedding_size))
+            if(self.use_Other == 1):
+                _other_embedding = tf.get_variable('other_embedding',dtype=tf.float32,shape=(47
+                ,self.other_embedding_size))
 
-            self.other_embedding = tf.nn.embedding_lookup(_other_embedding,self.others)
+                self.other_embedding = tf.nn.embedding_lookup(_other_embedding,self.others)
 
-            self.lstm_inputs = tf.concat([self.inputs_embedding,self.other_embedding],axis=2)
+                self.lstm_inputs = tf.concat([self.inputs_embedding,self.other_embedding],axis=2)
+            else:
+                self.lstm_inputs = self.inputs_embedding
+
             if (self.isTrain == 1):
+                print('isTrain --------------------')
                 self.lstm_inputs = tf.nn.dropout(self.lstm_inputs,self.keep_prob)
 
             # self.lstm_inputs = inputs_embedding
@@ -98,8 +103,8 @@ class MyMode:
                                 ,self.lstm_inputs,dtype=tf.float32)
         forward_out, backward_out  = orginal_lstm_outputs
         self.lstm_outputs = tf.concat([forward_out,backward_out],axis=2)
-        if(self.isTrain == 1):
-            print('isTrain')
+        if(self.isTrain == tf.convert_to_tensor(1)):
+            print('isTrain --------------------')
             self.lstm_outputs = tf.nn.dropout(self.lstm_inputs,self.keep_prob)
 
 
@@ -141,45 +146,36 @@ class MyMode:
 
 
     def build_optimizer(self):
-        self.train_op = tf.train.AdamOptimizer(learning_rate=0.0003).minimize(self.loss)
+        self.train_op = tf.train.AdamOptimizer().minimize(self.loss)
 
     def train(self,batch_generator):
         # print('self.use_crf',self.use_crf)
         losses = []
-        sess = self.session
-        # sess.run(tf.global_variables_initializer())
+        flag = 0
+        if(flag == 1):
+            sess = self.session
+        else:
+            sess = tf.Session()
+            sess.run(tf.global_variables_initializer())
+
         step = 0
         for X, Y, M in batch_generator:
-            X_, lengths = U.paddingList(X, pad_token=0)
-            M_, _ = U.paddingList(M, pad_token=0)
-            Y_, _ = U.paddingList(Y, pad_token=0)
-            feed = {
-                self.inputs: X_,
-                self.sequence_lengths: lengths,
-                self.others: M_,
-                self.targets: Y_
-                # self.keep_prob: keep_prob
-            }
             step += 1
             feed, _ = self.getTrainfeed(X, M, Y)
+            batch_loss, logits, _ ,_= sess.run([self.loss, self.logits, self.train_op,self.lstm_inputs], feed_dict=feed)
 
-            batch_loss, logits, _ = sess.run([self.loss, self.logits, self.train_op], feed_dict=feed)
-
-            # if(step%10 == 0):
             print('loss', batch_loss)
             losses.append(batch_loss)
             if (step % 1000 == 0):
                 print('asdasdasd')
-                self.saver.save(sess, os.path.join('./crf_model/'), global_step=step)
-                file = open('./resource/crf_losses2.txt', 'w', encoding='utf-8')
+                self.saver.save(sess, os.path.join('./crf_noOther_model/'), global_step=step)
+                file = open('./resource/crf_losses4_train.txt', 'w', encoding='utf-8')
                 file.write(str(losses))
                 file.close()
-                # if(step == 10):
-                #     return
-
 
     def predict(self,predict_generator):
         # self.isTrain = False
+        predicts = []
         sess = self.session
         for X, M,Y in predict_generator:
             feed, lengths = self.getPredictfeed(X, M)
@@ -197,19 +193,21 @@ class MyMode:
                     viterbi_sequences += [viterbi_seq]
                 # print(viterbi_sequences)
                 preds = [U.int_to_target(idx) for idx in list(viterbi_sequences[0])]
+                predicts = predicts+preds
+                # predicts.append(preds)
                 real = [U.int_to_target(idx) for idx in list(Y[0])]
+
                 print('=---------------------==')
                 print('viterbi',preds)
                 print('Y_lbale',real)
                 print('=---------------------==')
 
-                # print(preds)
-
 
             else:
                 labels_pre = sess.run([self.labels_pre], feed_dict=feed)
                 preds = [U.int_to_target(idx) for idx in list(labels_pre[0][0])]
-
+                predicts.append(preds)
+        return predicts
     def load(self, checkpoint):
         self.session = tf.Session()
         self.saver.restore(self.session, checkpoint)
@@ -217,15 +215,38 @@ class MyMode:
 
 if __name__ == '__main__':
     pass
-    g = batch_generator(250)
+    g = batch_generator(200)
     rnn = MyMode(310,128,20,128,0.005,1723,47,128)
-    rnn.load(tf.train.latest_checkpoint('./crf_model/'))
+    # rnn.load(tf.train.latest_checkpoint('./crf_model/'))
 
     # rnn.use_crf = False
-    rnn.train(g)
-    # pre = predict_generator()
+    # rnn.train(g)
+    pre = predict_generator()
     # rnn.isTrain = 0
 
-    # rnn.load(tf.train.latest_checkpoint('./crf_model/'))
-    # rnn.predict(pre)
+    rnn.load(tf.train.latest_checkpoint('./crf_noOther_model/'))
+    predicts  = rnn.predict(pre)
+
+    file = open('0-test.txt','r',encoding='utf-8')
+    test_list=[]
+
+    for line in file.readlines():
+        line = line.strip()
+        items = line.split()
+        if(len(items) >2 ):
+            test_list.append(items)
+    test_predicts = []
+    print(len(test_list),len(predicts))
+    file2 = open('ceshi2.txt','w',encoding='utf-8')
+
+
+    for test,pred in zip(test_list,predicts):
+        test.append(pred)
+        test_predicts.append(test)
+        file2.write(test[0]+' '+test[1]+' '+test[2]+' '+pred+'\n')
+    # print(test_list)
+    file2.close()
+    print(test_predicts)
+
+
 

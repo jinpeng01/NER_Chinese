@@ -3,7 +3,7 @@ import pickle
 import os
 
 max_length = 310
-
+dir = './UtilsData'
 class Utils:
     def __init__(self,filename='0-train.txt',vocab_save_file='vocab.pkl'):
         self.filename = filename
@@ -215,6 +215,8 @@ class Utils:
         for item in _list:
             if(item in table):
                 indexs.append(table[item])
+            else:
+                indexs.append(len(table))
         return indexs
 
 
@@ -247,10 +249,6 @@ class Utils:
 
 def batch_generator(batch_size,fileName = '0-train.txt'):
     U = Utils()
-    word_list = []
-    other_feature_list = []
-    target_list=[]
-
     word_list_item=[]
     other_feature_list_item = []
     target_list_item = []
@@ -282,13 +280,6 @@ def batch_generator(batch_size,fileName = '0-train.txt'):
                 word_list_item=[]
                 other_feature_list_item=[]
                 target_list_item=[]
-
-    # print(target_index_vector)
-    # print(target_index_vector[0:3])
-    #
-    # print('target_index_vector.leng',len(target_index_vector))
-    # print('other_feature_index_vector.leng',len(other_feature_index_vector))
-
     while(True):
         startindex = 0
         while (startindex <len(target_index_vector)):
@@ -301,7 +292,7 @@ def batch_generator(batch_size,fileName = '0-train.txt'):
 
 
 
-def predict_generator(fileName = '0-train.txt'):
+def predict_generator(fileName = '0-test.txt'):
     U = Utils()
     word_list_item = []
     other_feature_list_item = []
@@ -320,6 +311,9 @@ def predict_generator(fileName = '0-train.txt'):
                 other_feature_list_item.append(items[1])
                 target_list_item.append(items[2])
             else:
+                if(len(word_list_item)!= len(other_feature_list_item)):
+                    print('word_list_item',word_list_item)
+                    print('other_feature',other_feature_list_item)
                 word_index_vector_item = U.toIndex(word_list_item, U.word_to_int_table)
                 word_index_vector.append(word_index_vector_item)
 
@@ -328,7 +322,9 @@ def predict_generator(fileName = '0-train.txt'):
 
                 target_index_vector_item = U.toIndex(target_list_item, U.target_to_int_table)
                 target_index_vector.append(target_index_vector_item)
-
+                if (len(word_index_vector_item) != len(other_feature_index_vector_item)):
+                    print('word_index_vector_item', word_list_item)
+                    print('other_feature_index_vector_item', other_feature_list_item)
                 word_list_item = []
                 other_feature_list_item = []
                 target_list_item = []
@@ -340,6 +336,11 @@ def predict_generator(fileName = '0-train.txt'):
         M = other_feature_index_vector[startindex:startindex + batch_size]
         Y = target_index_vector[startindex:startindex + batch_size]
         startindex = startindex + batch_size
+        # if(len(X[0]) != len(M[0])):
+            # print("X",X)
+            # print("M",M)
+
+
 
         yield X,M,Y
 
@@ -358,7 +359,7 @@ def predict_generator(fileName = '0-train.txt'):
 
 
 
-U = Utils()
+# U = Utils()
 # batch_generator(20,'all.txt')
 
 # s = U.padding([1,2,3],4,2)
