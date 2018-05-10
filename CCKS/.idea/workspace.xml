@@ -25,8 +25,8 @@
       <file leaf-file-name="MyRnn_user_crf.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/MyRnn_user_crf.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="438">
-              <caret line="206" column="34" lean-forward="true" selection-start-line="206" selection-start-column="34" selection-end-line="206" selection-end-column="34" />
+            <state relative-caret-position="465">
+              <caret line="207" column="42" lean-forward="false" selection-start-line="207" selection-start-column="42" selection-end-line="207" selection-end-column="42" />
               <folding>
                 <element signature="e#4515#5304#0" expanded="false" />
                 <element signature="e#5346#5406#0" expanded="false" />
@@ -67,16 +67,6 @@
                 <element signature="e#438#2059#0" expanded="false" />
                 <element signature="e#11137#13209#0" expanded="false" />
               </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="0-train.txt" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/0-train.txt">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="162">
-              <caret line="59" column="9" lean-forward="true" selection-start-line="59" selection-start-column="9" selection-end-line="59" selection-end-column="9" />
-              <folding />
             </state>
           </provider>
         </entry>
@@ -862,8 +852,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/MyRnn_user_crf.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="438">
-          <caret line="206" column="34" lean-forward="true" selection-start-line="206" selection-start-column="34" selection-end-line="206" selection-end-column="34" />
+        <state relative-caret-position="465">
+          <caret line="207" column="42" lean-forward="false" selection-start-line="207" selection-start-column="42" selection-end-line="207" selection-end-column="42" />
           <folding>
             <element signature="e#4515#5304#0" expanded="false" />
             <element signature="e#5346#5406#0" expanded="false" />
